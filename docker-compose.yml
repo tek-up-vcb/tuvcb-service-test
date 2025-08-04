@@ -1,13 +1,39 @@
 version: '3.8'
 services:
-  service-name:
+  traefik:
+    image: traefik:v2.10
+    command:
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+    ports:
+      - "80:80"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+
+  consul:
+    image: consul:1.16
+    command: consul agent -dev -client 0.0.0.0
+    ports:
+      - "8500:8500"
+
+  service-test:
     build: .
+    container_name: service-test
+    environment:
+      - PORT=3000
+      - SERVICE_NAME=service-test
+      - SERVICE_HOST=service-test
+      - CONSUL_HOST=consul
+      - CONSUL_PORT=8500
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.service-test.rule=Host(\`service-test.localhost\`)"
+      - "traefik.http.services.service-test.loadbalancer.server.port=3000"
+    depends_on:
+      - consul
     ports:
       - "3000:3000"
-    env_file:
-      - .env
-    depends_on:
-      - mongodb
 
   mongodb:
     image: mongo
