@@ -15,23 +15,25 @@ async function bootstrap() {
   const serviceName = process.env.SERVICE_NAME ?? 'service-test';
   const serviceHost = process.env.SERVICE_HOST ?? 'localhost';
 
-  await new Promise<void>((resolve, reject) => {
-    consul.agent.service.register(
-      {
-        name: serviceName,
-        id: serviceName,
-        address: serviceHost,
-        port,
-        check: {
-          http: `http://${serviceHost}:${port}/health`,
-          interval: '10s',
-        },
-      },
-      (err: unknown) => {
-        if (err) return reject(err);
-        resolve();
-      },
-    );
+try {
+  await consul.agent.service.register({
+    name: serviceName,
+    id: serviceName,
+    address: serviceHost,
+    port,
+    check: {
+      name: `${serviceName}-health`,
+      http: `http://${serviceHost}:${port}/health`,
+      interval: '10s',
+      timeout: '5s',
+    },
   });
+  console.log('Service registered with Consul');
+} catch (err: unknown) {
+  console.error('Error registering service with Consul:', err);
+  process.exit(1);
 }
+
+}
+
 bootstrap();
